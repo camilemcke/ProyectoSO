@@ -1,0 +1,74 @@
+#include <iostream>
+#include <fstream>
+#include <thread>
+#include <vector>
+#include <chrono>
+#include <mutex>
+#include <windows.h>
+
+using namespace std;
+
+mutex console_mutex;
+
+
+void read_file(const string& file_name, int color)
+{
+    lock_guard<mutex> guard(console_mutex);
+
+    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), color);
+    auto thread_id = this_thread::get_id();
+    cout << "[Thread " << thread_id << "] - Leyendo archivo " << file_name << "..." << endl;
+    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);  
+    ifstream file(file_name);
+    if (file.is_open())
+    {
+        string content, line;
+        while (getline(file, line))
+        {
+            content += line + "\n"; 
+        }
+        file.close();
+
+        SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), color);
+        cout << content << endl;
+        SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7); 
+    }
+    else
+    {
+        cout << "No se pudo abrir el archivo " << file_name << endl;
+    }
+}
+
+
+int main()
+{
+    SetConsoleOutputCP(CP_UTF8);
+    setlocale(LC_ALL, "spanish");
+
+    vector<string> files = { "NotasPrimerParcial.txt", "NotasSegundoParcial.txt", "PrimeraEntregaProyecto.txt" };
+    vector<int> colors = { 9, 10, 11 }; 
+    vector<thread> threads;
+    auto start_time = chrono::high_resolution_clock::now();
+
+    // Crear un hilo para cada archivo con su respectivo color
+    for (size_t i = 0; i < files.size(); ++i) 
+    {
+        threads.emplace_back(thread(read_file, files[i], colors[i]));
+    }
+
+    // Esperar a que todos los hilos terminen
+    for (auto& th : threads) 
+    {
+        th.join();
+    }
+
+    auto end_time = chrono::high_resolution_clock::now();
+    chrono::duration<double> diff = end_time - start_time;
+
+    // Mensaje final con el tiempo total de lectura
+    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 12); 
+    cout << "Tiempo total de lectura concurrente: " << diff.count() << " segundos." << endl;
+    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7); 
+
+    return 0;
+}
